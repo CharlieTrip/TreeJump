@@ -1,0 +1,15 @@
+[package]
+name = "tree_jump"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+index_tree = { git = "https://github.com/CharlieTrip/IndexTree" }
+indicatif = "0.17.7"
+num-traits = "0.2.19"
+rand	= "0.8.5"
+
+
+[profile.release]
+opt-level = 3
+strip = "debuginfo"
