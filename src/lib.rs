@@ -14,9 +14,13 @@ pub struct Candidate<K: std::clone::Clone> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Constrain<K: std::clone::Clone> {
+pub struct Constrain<K, I>
+where
+  K: std::clone::Clone,
+  I: std::clone::Clone,
+{
   pub index: usize,
-  pub constrain: fn(Vec<K>) -> bool,
+  pub constrain: fn(Vec<K>, &Option<I>) -> bool,
 }
 
 /// Search Space with extractor given an index
@@ -36,19 +40,30 @@ impl<K: std::clone::Clone> SearchSpace<K> {
 }
 
 #[derive(Debug, Clone)]
-pub struct TreeJump<K: std::clone::Clone> {
+pub struct TreeJump<K, I>
+where
+  K: std::clone::Clone,
+  I: std::clone::Clone,
+{
+  input: Vec<Option<I>>,
   pub search_space: SearchSpace<K>,
   indextree: IndexTree,
-  pub constrains: Vec<Constrain<K>>,
+  pub constrains: Vec<Constrain<K, I>>,
   pub solved: Vec<Vec<K>>,
   verbatim: Option<ProgressBar>,
   timing: Option<Duration>,
+  count: usize,
 }
 
-impl<K: std::clone::Clone + std::fmt::Debug> TreeJump<K> {
+impl<'a, K, I> TreeJump<K, I>
+where
+  K: std::clone::Clone + std::fmt::Debug,
+  I: std::clone::Clone + std::fmt::Debug,
+{
   pub fn new(
+    input: Option<Vec<Option<I>>>,
     space: Vec<Vec<K>>,
-    mut phis: Vec<Constrain<K>>,
+    mut phis: Vec<Constrain<K, I>>,
     verbatim: Option<ProgressBar>,
   ) -> Self {
     // Create SearchSpace
@@ -66,7 +81,13 @@ impl<K: std::clone::Clone + std::fmt::Debug> TreeJump<K> {
     // Sort conditions to be index sorted
     phis.sort_by_key(|c| c.index);
 
+    let input = match input {
+      Some(v) => v,
+      _ => vec![None; phis.len()],
+    };
+
     Self {
+      input: input,
       search_space: SearchSpace {
         search_space: search,
       },
@@ -75,6 +96,7 @@ impl<K: std::clone::Clone + std::fmt::Debug> TreeJump<K> {
       solved: vec![],
       verbatim: verbatim,
       timing: None,
+      count: 0,
     }
   }
 
@@ -119,6 +141,7 @@ impl<K: std::clone::Clone + std::fmt::Debug> TreeJump<K> {
     let jump = Self::jump_indices(&cons);
 
     let mut pos: usize = 0;
+    let mut same_index: bool = false;
 
     let (verb, pb) = self.progressbar();
 
@@ -127,6 +150,7 @@ impl<K: std::clone::Clone + std::fmt::Debug> TreeJump<K> {
       let c = self.search_space.get(i);
 
       if pos >= length {
+        // Found a solution
         self.solved.push(c);
         let res = self.indextree.inc();
 
@@ -144,9 +168,20 @@ impl<K: std::clone::Clone + std::fmt::Debug> TreeJump<K> {
           Err(_) => (),
         }
       } else {
-        if (self.constrains[pos].constrain)(c) {
-          pos += 1;
+        // Checking the current candidate
+        self.count += 1;
+
+        if (self.constrains[pos].constrain)(c, &self.input[pos]) {
+          // Good Check
+          // If same_index got changed, check from the jump
+          if same_index {
+            same_index = false;
+            pos = jump[pos];
+          } else {
+            pos += 1;
+          }
         } else {
+          // Bad Check
           // TODO: remove +2 when IndexTree is consistent
           let res = self.indextree.inc_skip(self.constrains[pos].index + 2);
           if verb {
@@ -158,8 +193,20 @@ impl<K: std::clone::Clone + std::fmt::Debug> TreeJump<K> {
 
           match res {
             // TODO: remove +1 when IndexTree is consistent
-            Ok((_, false)) => pos = jump[pos],
-            Ok((j, true)) => pos = bad[j - 1],
+            Ok((_, false)) => match pos {
+              0 => pos = jump[pos],
+              _ => {
+                if jump[pos] == jump[pos - 1] {
+                  same_index = true;
+                } else {
+                  pos = jump[pos]
+                }
+              }
+            },
+            Ok((j, true)) => {
+              same_index = false;
+              pos = bad[j - 1];
+            }
             Err(_) => (),
           }
         }
@@ -181,6 +228,10 @@ impl<K: std::clone::Clone + std::fmt::Debug> TreeJump<K> {
 
   pub fn timing(&self) -> Option<Duration> {
     self.timing
+  }
+
+  pub fn counting(&self) -> usize {
+    self.count
   }
 
   fn progressbar(&self) -> (bool, Option<(Vec<u64>, ProgressBar)>) {

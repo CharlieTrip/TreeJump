@@ -12,13 +12,15 @@ use tree_jump::Constrain;
 use tree_jump::TreeJump;
 
 type K = u8;
-fn phi(candidate: Vec<K>) -> bool {
+type I = Option<u8>;
+
+fn phi(candidate: Vec<K>, input : &I) -> bool {
   candidate[0] % 2 == 0
 }
-fn psi(candidate: Vec<K>) -> bool {
+fn psi(candidate: Vec<K>, input : &I) -> bool {
   candidate[0] + candidate[1] == 6
 }
-fn chi(candidate: Vec<K>) -> bool {
+fn chi(candidate: Vec<K>, input : &I) -> bool {
   candidate[1] % 2 == 0
 }
 
@@ -40,7 +42,7 @@ let constrains = vec![
   },
 ];
 
-let mut tree_jump = TreeJump::new(space.clone(), constrains.clone(),None);
+let mut tree_jump = TreeJump::new(None,space.clone(), constrains.clone(),None);
 let solved = tree_jump.search();
 println!("Solved: {:?}", solved);
 ```

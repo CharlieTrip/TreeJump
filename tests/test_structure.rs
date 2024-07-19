@@ -43,15 +43,15 @@ mod tests {
       }
     }
 
-    let phis: Vec<Constrain<K>> = (0..3)
+    let phis: Vec<Constrain<K, I>> = (0..3)
       .into_iter()
-      .map(|i| Constrain::<u8> {
+      .map(|i| Constrain::<u8, I> {
         index: 2 - i,
         constrain: phi,
       })
       .collect();
 
-    let tree = TreeJump::<K>::new(random_values, phis, None);
+    let tree = TreeJump::<K, I>::new(None, random_values, phis, None);
 
     for i in 0..3 {
       assert_eq!(tree.constrains[i].index, i)
@@ -60,21 +60,21 @@ mod tests {
 
   #[test]
   fn jump_vector() {
-    let jump = TreeJump::<u8>::jump_indices(&vec![1, 2, 2, 4, 5, 5]);
+    let jump = TreeJump::<u8, I>::jump_indices(&vec![1, 2, 2, 4, 5, 5]);
     assert_eq!(jump, vec![0, 1, 1, 3, 4, 4]);
-    let jump = TreeJump::<u8>::jump_indices(&vec![0, 0, 4, 4, 5, 5]);
+    let jump = TreeJump::<u8, I>::jump_indices(&vec![0, 0, 4, 4, 5, 5]);
     assert_eq!(jump, vec![0, 0, 2, 2, 4, 4]);
-    let jump = TreeJump::<u8>::jump_indices(&vec![3, 3, 4, 5, 6, 7]);
+    let jump = TreeJump::<u8, I>::jump_indices(&vec![3, 3, 4, 5, 6, 7]);
     assert_eq!(jump, vec![0, 0, 2, 3, 4, 5]);
   }
 
   #[test]
   fn bad_vector() {
-    let bad = TreeJump::<u8>::bad_indices(&vec![1, 2, 2, 4, 5, 5]);
+    let bad = TreeJump::<u8, I>::bad_indices(&vec![1, 2, 2, 4, 5, 5]);
     assert_eq!(bad, vec![0, 0, 1, 3, 3, 4]);
-    let bad = TreeJump::<u8>::bad_indices(&vec![0, 0, 4, 4, 5, 5]);
+    let bad = TreeJump::<u8, I>::bad_indices(&vec![0, 0, 4, 4, 5, 5]);
     assert_eq!(bad, vec![0, 2, 2, 2, 2, 4]);
-    let bad = TreeJump::<u8>::bad_indices(&vec![3, 3, 4, 5, 6, 7]);
+    let bad = TreeJump::<u8, I>::bad_indices(&vec![3, 3, 4, 5, 6, 7]);
     assert_eq!(bad, vec![0, 0, 0, 0, 2, 3, 4, 5]);
   }
 
@@ -94,7 +94,7 @@ mod tests {
       },
     ];
 
-    let mut tree_jump = TreeJump::new(space.clone(), constrains.clone(), None);
+    let mut tree_jump = TreeJump::new(None, space.clone(), constrains.clone(), None);
     let solved = tree_jump.search();
 
     assert_eq!(solved, vec![vec![2, 2], vec![6, 6], vec![4, 4]]);
@@ -114,7 +114,7 @@ mod tests {
       },
     ];
 
-    let mut tree_jump = TreeJump::new(space.clone(), constrains.clone(), None);
+    let mut tree_jump = TreeJump::new(None, space.clone(), constrains.clone(), None);
     let solved = tree_jump.search();
 
     assert_eq!(solved, vec![vec![6, 6]]);
@@ -133,23 +133,25 @@ mod tests {
   type K = u8;
   type X = u8;
   type C = u8;
+  type I = u8;
+  type H<'a> = &'a Option<u8>;
 
   fn f(x: X, k: Vec<K>, c: C) -> bool {
     x ^ k[0] ^ k[1] ^ c == 0
   }
 
-  fn phieq(x: Vec<u8>) -> bool {
+  fn phieq(x: Vec<u8>, _: H) -> bool {
     x[0] ^ x[1] == 0
   }
 
-  fn phiev(x: Vec<u8>) -> bool {
+  fn phiev(x: Vec<u8>, _: H) -> bool {
     x[0] % 2 == 0
   }
-  fn phisix(x: Vec<u8>) -> bool {
+  fn phisix(x: Vec<u8>, _: H) -> bool {
     x[1] % 3 == 0
   }
 
-  fn phi(k: Vec<K>) -> bool {
+  fn phi(k: Vec<K>, _: H) -> bool {
     let x: X = 5;
     let c: C = 3;
     f(x, k, c)

@@ -45,6 +45,11 @@ pub fn commulative_products<T: PrimInt + std::fmt::Debug>(
     }
   }
 
+  after.push(T::one());
+  if before != vec![] {
+    before.push(T::zero());
+  }
+
   match total.is_zero() {
     true => (None, before, after),
     false => (Some(total), before, after),
