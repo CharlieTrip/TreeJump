@@ -10,7 +10,7 @@ use std::time::Duration;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Candidate<K: std::clone::Clone> {
-  pub candidate: Vec<K>,
+  pub candidate: Vec<Vec<K>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -34,7 +34,7 @@ impl<K: std::clone::Clone> SearchSpace<K> {
     index
       .iter()
       .enumerate()
-      .map(|(i, j)| self.search_space[i].candidate[*j].clone())
+      .flat_map(|(i, j)| self.search_space[i].candidate[*j].clone())
       .collect()
   }
 }
@@ -70,6 +70,46 @@ where
     let search: Vec<Candidate<K>> = space
       .iter()
       .map(|cand| Candidate {
+        candidate: Self::to_space(cand.to_vec()),
+      })
+      .collect();
+
+    // Create IndexTree
+    let dims: Vec<usize> = space.iter().map(|v| v.len()).collect();
+    let it: IndexTree = IndexTree::new(&dims, &vec![]);
+
+    // Sort conditions to be index sorted
+    phis.sort_by_key(|c| c.index);
+
+    let input = match input {
+      Some(v) => v,
+      _ => vec![None; phis.len()],
+    };
+
+    Self {
+      input: input,
+      search_space: SearchSpace {
+        search_space: search,
+      },
+      indextree: it,
+      constrains: phis,
+      solved: vec![],
+      verbatim: verbatim,
+      timing: None,
+      count: 0,
+    }
+  }
+
+  pub fn new_vector(
+    input: Option<Vec<Option<I>>>,
+    space: Vec<Vec<Vec<K>>>,
+    mut phis: Vec<Constrain<K, I>>,
+    verbatim: Option<ProgressBar>,
+  ) -> Self {
+    // Create SearchSpace
+    let search: Vec<Candidate<K>> = space
+      .iter()
+      .map(|cand| Candidate {
         candidate: (*cand.clone()).to_vec(),
       })
       .collect();
@@ -98,6 +138,14 @@ where
       timing: None,
       count: 0,
     }
+  }
+
+  fn to_space(cand: Vec<K>) -> Vec<Vec<K>> {
+    cand
+      .iter()
+      .map(|x| vec![x.clone()])
+      .collect::<Vec<_>>()
+      .to_vec()
   }
 
   pub fn constrain_indices(&self) -> Vec<usize> {
