@@ -18,9 +18,9 @@ mod tests {
     let mut rng = rand::thread_rng();
     let limit: usize = 10;
     let limitbis: usize = 10;
-    let random_values: Vec<Vec<u8>> = (0..limit)
+    let random_values: Vec<Vec<Vec<u8>>> = (0..limit)
       .into_iter()
-      .map(|_| (0..limitbis).into_iter().map(|_| rng.gen()).collect())
+      .map(|_| (0..limitbis).into_iter().map(|_| vec![rng.gen()]).collect())
       .collect();
 
     let mut cand: Vec<Candidate<u8>> = vec![];
@@ -38,8 +38,8 @@ mod tests {
     for i in 0..limitbis {
       let value = space.get(&vec![i]);
 
-      for j in value.iter() {
-        assert_eq!(*j, random_values[0][i]);
+      for (p, j) in value.iter().enumerate() {
+        assert_eq!(*j, random_values[0][i][p]);
       }
     }
 
@@ -51,7 +51,7 @@ mod tests {
       })
       .collect();
 
-    let tree = TreeJump::<K, I>::new(None, random_values, phis, None);
+    let tree = TreeJump::<K, I>::new_vector(None, random_values, phis, None);
 
     for i in 0..3 {
       assert_eq!(tree.constrains[i].index, i)
@@ -128,6 +128,43 @@ mod tests {
     let vectors: Vec<u8> = vec![2, 8, 8, 8];
     let (a, _, _) = commulative_products(&vectors);
     assert_eq!(a, Some(16));
+  }
+
+  #[test]
+  pub fn test_output() {
+    let obj: [u8; 10] = [10, 15, 80, 72, 1, 0, 81, 72, 30, 8];
+    let space = vec![obj.to_vec(); 6];
+    let phis = vec![
+      Constrain {
+        index: 2,
+        constrain: f3,
+      },
+      Constrain {
+        index: 3,
+        constrain: f4,
+      },
+      Constrain {
+        index: 6,
+        constrain: f6,
+      },
+    ];
+    let input = Some(vec![Some(0), Some(1), Some(0)]);
+    let mut tree = TreeJump::new(input, space, phis, None);
+
+    let s = tree.search();
+    assert_eq!(s.len(), 1000);
+  }
+
+  fn f3(input: Vec<u8>, _c: &Option<u8>) -> bool {
+    input[2] == 0
+  }
+
+  fn f4(input: Vec<u8>, _c: &Option<u8>) -> bool {
+    input[3] == 0
+  }
+
+  fn f6(input: Vec<u8>, _c: &Option<u8>) -> bool {
+    input[5] == 8
   }
 
   type K = u8;
